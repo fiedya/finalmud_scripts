@@ -1,0 +1,5 @@
+# config.lua contains your GitHub Personal Access Token — never commit it
+config.lua
+
+# Temporary files created during update downloads
+.tmp_versions
