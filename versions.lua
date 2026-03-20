@@ -10,7 +10,7 @@
 
 return {
     scripts = {
-        ["Main.lua"] = "1.0.1",
+        ["Main.lua"] = "1.0.2",
         ["path_creator/Main.lua"] = "1.0.0",
         ["path_creator/PathCreator.lua"] = "1.0.0",
     }
