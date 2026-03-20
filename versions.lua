@@ -1,12 +1,17 @@
 -- versions.lua
--- Remote version manifest — commit this file every time you push a script update.
--- Main.lua reads this from GitHub on startup to detect which scripts are outdated.
+-- Remote script manifest for installer.lua.
 --
--- Bump the version string for any file you changed before pushing to GitHub.
--- Format: "major.minor.patch"
+-- Format:
+-- return {
+--   scripts = {
+--     ["relative/path/to/file.lua"] = "major.minor.patch",
+--   }
+-- }
 
 return {
-    ["PathCreator.lua"] = "1.0.0",
-    -- ["Herbs.lua"]    = "1.0.0",
-    -- ["Combat.lua"]   = "1.0.0",
+    scripts = {
+        ["Main.lua"] = "1.0.1",
+        ["path_creator/Main.lua"] = "1.0.0",
+        ["path_creator/PathCreator.lua"] = "1.0.0",
+    }
 }
