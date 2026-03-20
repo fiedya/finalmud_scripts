@@ -165,7 +165,8 @@ function ScriptsInstaller.parseVersionsSource(source)
         return nil, "empty versions source"
     end
 
-    local chunk, err = load(source, "@versions.lua")
+    local loader = loadstring or load
+    local chunk, err = loader(source)
     if not chunk then return nil, err end
 
     local ok, result = pcall(chunk)
@@ -211,12 +212,15 @@ function ScriptsInstaller.downloadToFile(url, destPath, callback, attempt)
     local maxAttempts = (ScriptsInstaller.config.retries or 0) + 1
     local doneHandler
     local errHandler
+    local timeoutTimer
 
     local function cleanup()
         if doneHandler then killAnonymousEventHandler(doneHandler) end
         if errHandler then killAnonymousEventHandler(errHandler) end
+        if timeoutTimer then killTimer(timeoutTimer) end
         doneHandler = nil
         errHandler = nil
+        timeoutTimer = nil
     end
 
     local function retryOrFail(reason)
@@ -240,10 +244,12 @@ function ScriptsInstaller.downloadToFile(url, destPath, callback, attempt)
     end
 
     local normalizedDest = ScriptsInstaller.normalizePath(destPath)
+    ScriptsInstaller.log("Downloading from: " .. url, "white")
 
     doneHandler = registerAnonymousEventHandler("sysDownloadDone", function(_, path)
         if ScriptsInstaller.normalizePath(path) ~= normalizedDest then return end
         cleanup()
+        ScriptsInstaller.log("Download complete (file received): " .. destPath, "white")
 
         local data, readErr = ScriptsInstaller.readFile(destPath)
         if not data then
@@ -259,11 +265,21 @@ function ScriptsInstaller.downloadToFile(url, destPath, callback, attempt)
 
     errHandler = registerAnonymousEventHandler("sysDownloadError", function(_, path, err)
         if ScriptsInstaller.normalizePath(path) ~= normalizedDest then return end
+        ScriptsInstaller.log("Download error event: " .. tostring(err), "yellow")
         retryOrFail(err or "HTTP error")
     end)
 
+    -- Timeout after 30 seconds
+    timeoutTimer = tempTimer(30, function()
+        cleanup()
+        ScriptsInstaller.log("Download timeout (30s): " .. destPath, "yellow")
+        retryOrFail("timeout")
+    end)
+
+    ScriptsInstaller.log("Starting download: " .. destPath, "white")
     local ok, callErr = pcall(downloadFile, destPath, url)
     if not ok then
+        ScriptsInstaller.log("downloadFile() error: " .. tostring(callErr), "red")
         retryOrFail(callErr or "downloadFile call failed")
     end
 end
@@ -458,12 +474,19 @@ function scripts_update()
 end
 
 function ScriptsInstaller.showVersions()
+    if ScriptsInstaller._showVersionsBusy then
+        ScriptsInstaller.log("Version check already running - please wait.", "yellow")
+        return
+    end
+    ScriptsInstaller._showVersionsBusy = true
+
     ScriptsInstaller.log("Checking versions...", "cyan")
     ScriptsInstaller.ensureDir(ScriptsInstaller.scriptBaseDir())
 
     ScriptsInstaller.fetchRemoteManifest(function(remoteScripts, err)
         if not remoteScripts then
             ScriptsInstaller.log(err or "unknown error", "red")
+            ScriptsInstaller._showVersionsBusy = false
             return
         end
 
@@ -503,6 +526,7 @@ function ScriptsInstaller.showVersions()
 
         echo("=" .. string.rep("=", 73) .. "\n")
         echo("Legend:  ✓ = up to date  |  ↑ = update available  |  ! = local ahead\n\n")
+        ScriptsInstaller._showVersionsBusy = false
     end)
 end
 
@@ -556,8 +580,10 @@ end
 
 local function safePermAlias(name, pattern, code)
     if exists(name, "alias") > 0 then
-        disableAlias(name)
-        enableAlias(name)
+        pcall(deleteAlias, name)
+        if exists(name, "alias") > 0 then
+            pcall(killAlias, name)
+        end
     end
     permAlias(name, "", pattern, code)
 end

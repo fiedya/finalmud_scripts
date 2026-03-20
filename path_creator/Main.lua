@@ -11,6 +11,7 @@
 --------------------------------------------------------------------------------
 
 Main = Main or {}
+Main.VERSION = "1.0.0"
 
 -- ── Script list ───────────────────────────────────────────────────────────────
 -- Add every module file here.  Paths are relative to Main.baseDir.

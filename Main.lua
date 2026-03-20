@@ -19,6 +19,9 @@
 
 Main = Main or {}
 
+Main = Main or {}
+Main.VERSION = "1.0.1"
+
 -- ── Base directory ────────────────────────────────────────────────────────────
 Main.baseDir = "C:/Users/alicj/Programowanie/lua/finalmud_scripts/"
 
