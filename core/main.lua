@@ -1,8 +1,7 @@
 
-SCRIPTS_VERSION = "1.0.3"
+SCRIPTS_VERSION = "1.0.4"
 
 FILES = {
-  "core/main.lua",
   "core/utils.lua",
   "core/commands.lua",
   "modules/pathfinder.lua",
