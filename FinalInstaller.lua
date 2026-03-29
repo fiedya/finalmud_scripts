@@ -1,12 +1,14 @@
 -- Final scripts Auto-Updater
 -- Version system
-FINALSCRIPTS_VERSION = "1.0.4"
+FINALSCRIPTS_VERSION = "1.0.5"
 FINALSCRIPTS_REPO_USER = "fiedya" -- replace with your GitHub username
 FINALSCRIPTS_REPO_NAME = "finalmud_scripts" -- replace with your GitHub repo name
 FINALSCRIPTS_XML_NAME = "FinalInstaller.xml"
 
 local _updateHandler = nil
 local _updateInProgress = false
+
+cecho("<green>[Installer] Script started\n")
 
 function trim(s)
   return (s:gsub("^%s*(.-)%s*$", "%1"))
