@@ -39,12 +39,19 @@ _installer_http_handler = registerAnonymousEventHandler("sysGetHttpDone", functi
   end
 end)
 
+
+local function getTargetPath(filename)
+  -- Always use getMudletHomeDir() for the current profile
+  return getMudletHomeDir() .. "/" .. filename
+end
+
 local function downloadAndLoad(url, filename)
-  local path = getMudletHomeDir() .. "/" .. filename
+  local path = getTargetPath(filename)
   _pendingDownloads[path] = filename
   cecho(string.format("<cyan>[Installer] Pobieranie %s...\n", filename))
   downloadFile(path, url)
 end
+
 
 if _installer_download_handler then killAnonymousEventHandler(_installer_download_handler) end
 _installer_download_handler = registerAnonymousEventHandler("sysDownloadDone", function(_, fname, success)
@@ -52,17 +59,24 @@ _installer_download_handler = registerAnonymousEventHandler("sysDownloadDone", f
   if filename then
     if success then
       cecho(string.format("<green>[Installer] Załadowano %s\n", filename))
-      local ok, err = pcall(dofile, fname)
-      if not ok then
-        cecho(string.format("<red>[Installer] Błąd ładowania %s: %s\n", filename, tostring(err)))
-      end
     else
       cecho(string.format("<red>[Installer] Błąd pobierania %s\n", filename))
     end
     _pendingDownloads[fname] = nil
+    -- If all downloads done, reload main script
     local anyLeft = false
     for _,v in pairs(_pendingDownloads) do anyLeft = true break end
-    if not anyLeft then _updateInProgress = false end
+    if not anyLeft then
+      _updateInProgress = false
+      local mainPath = getTargetPath("core/main.lua")
+      cecho("<yellow>[Installer] Reloading scripts...\n")
+      local ok, err = pcall(dofile, mainPath)
+      if ok then
+        cecho("<green>[Installer] Scripts reloaded.\n")
+      else
+        cecho(string.format("<red>[Installer] Reload error: %s\n", tostring(err)))
+      end
+    end
   end
 end)
 
