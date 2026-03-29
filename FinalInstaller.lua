@@ -1,10 +1,13 @@
--- Mudlet Lua Auto-Loader Installer
-FINALSCRIPTS_VERSION = "0.0.1"
-FINALSCRIPTS_REPO_USER = "fiedya"
-FINALSCRIPTS_REPO_NAME = "finalmud_scripts"
+INSTALLER_VERSION = "1.0.1"
+INSTALLER_REPO_USER = "fiedya"
+INSTALLER_REPO_NAME = "finalmud_scripts"
 FILES = {
-  "core.lua",
-  "ui.lua"
+  "core/main.lua",
+  "core/utils.lua",
+  "core/commands.lua",
+  "modules/pathfinder.lua",
+  "modules/herbs.lua",
+  "modules/combat.lua"
 }
 
 local _updateInProgress = false
@@ -14,15 +17,17 @@ local function trim(s)
   return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
+
 function checkScriptsVersion()
-  local url = string.format("https://raw.githubusercontent.com/%s/%s/main/version.txt", FINALSCRIPTS_REPO_USER, FINALSCRIPTS_REPO_NAME)
+  local url = string.format("https://raw.githubusercontent.com/%s/%s/main/version.txt", INSTALLER_REPO_USER, INSTALLER_REPO_NAME)
   getHTTP(url)
 end
+
 
 local function onVersionCheck(url, body)
   if not body or #body == 0 then return end
   local remote = trim(body)
-  if remote ~= FINALSCRIPTS_VERSION then
+  if remote ~= INSTALLER_VERSION then
     cecho("<red>Masz nieaktualne skrypty! Wpisz <yellow>/zaktualizuj_skrypty\n")
   end
 end
@@ -60,6 +65,7 @@ _installer_download_handler = registerAnonymousEventHandler("sysDownloadDone", f
     if not anyLeft then _updateInProgress = false end
   end
 end)
+
 
 function updateScripts()
   if _updateInProgress then

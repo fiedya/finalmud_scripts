@@ -1,1 +1,0 @@
-cecho("<blue>[UI] UI loaded!\n")

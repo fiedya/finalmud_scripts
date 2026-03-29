@@ -6,7 +6,7 @@
 			<name>finalscripts_installer</name>
 			<packageName></packageName>
 			<script>-- Mudlet Lua Auto-Loader Installer
-FINALSCRIPTS_VERSION = "0.0.1"
+FINALSCRIPTS_VERSION = "1.0.1"
 FINALSCRIPTS_REPO_USER = "fiedya"
 FINALSCRIPTS_REPO_NAME = "finalmud_scripts"
 FILES = {
