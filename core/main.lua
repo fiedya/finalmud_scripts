@@ -1,4 +1,4 @@
-SCRIPTS_VERSION = "1.0.1"
+SCRIPTS_VERSION = "1.0.2"
 
 FILES = {
   "core/main.lua",
