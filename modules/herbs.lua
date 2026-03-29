@@ -1,3 +1,4 @@
+cecho("<green>[Scripts] Loaded: modules/herbs.lua\n")
 modules.herbs = {}
 
 function modules.herbs.init()

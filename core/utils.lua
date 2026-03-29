@@ -1,3 +1,4 @@
+cecho("<green>[Scripts] Loaded: core/utils.lua\n")
 utils = {}
 
 function utils.log(msg, color)

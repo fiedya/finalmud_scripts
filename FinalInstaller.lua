@@ -1,8 +1,9 @@
 cecho("<green>[Installer] Loaded!\n")
 
-INSTALLER_VERSION = "1.0.2"
+SCRIPTS_VERSION = "1.0.3"
 INSTALLER_REPO_USER = "fiedya"
 INSTALLER_REPO_NAME = "finalmud_scripts"
+
 FILES = {
   "core/main.lua",
   "core/utils.lua",
@@ -15,20 +16,45 @@ FILES = {
 local _updateInProgress = false
 local _pendingDownloads = {}
 
+--------------------------------------------------
+-- UTILS
+--------------------------------------------------
+
 local function trim(s)
   return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
+function ensureDir(path)
+  local sep = package.config:sub(1,1)
+  local current = ""
 
-function checkScriptsVersion()
-  local url = string.format("https://raw.githubusercontent.com/%s/%s/main/version.txt", INSTALLER_REPO_USER, INSTALLER_REPO_NAME)
-  getHTTP(url)
+  for part in path:gmatch("[^"..sep.."]+") do
+    current = current .. part .. sep
+    lfs.mkdir(current)
+  end
 end
 
+local function getTargetPath(filename)
+  return getMudletHomeDir() .. "/" .. filename
+end
+
+--------------------------------------------------
+-- VERSION CHECK
+--------------------------------------------------
+
+function checkScriptsVersion()
+  local url = string.format(
+    "https://raw.githubusercontent.com/%s/%s/main/version.txt",
+    INSTALLER_REPO_USER,
+    INSTALLER_REPO_NAME
+  )
+  getHTTP(url)
+end
 
 local function onVersionCheck(url, body)
   if not body or #body == 0 then return end
   local remote = trim(body)
+
   if remote ~= SCRIPTS_VERSION then
     cecho("<red>Masz nieaktualne skrypty! Wpisz <yellow>/zaktualizuj_skrypty\n")
   end
@@ -41,63 +67,120 @@ _installer_http_handler = registerAnonymousEventHandler("sysGetHttpDone", functi
   end
 end)
 
-
-local function getTargetPath(filename)
-  -- Always use getMudletHomeDir() for the current profile
-  return getMudletHomeDir() .. "/" .. filename
-end
+--------------------------------------------------
+-- DOWNLOAD
+--------------------------------------------------
 
 local function downloadAndLoad(url, filename)
   local path = getTargetPath(filename)
+
+  ensureDir(path)
+
   _pendingDownloads[path] = filename
   _pendingDownloads[filename] = filename
+
   cecho(string.format("<cyan>[Installer] Pobieranie %s...\n", filename))
   downloadFile(path, url)
 end
 
+--------------------------------------------------
+-- DOWNLOAD HANDLER
+--------------------------------------------------
 
 if _installer_download_handler then killAnonymousEventHandler(_installer_download_handler) end
 _installer_download_handler = registerAnonymousEventHandler("sysDownloadDone", function(_, fname, success)
-  local filename = _pendingDownloads[fname] or _pendingDownloads[getMudletHomeDir() .. "/" .. fname]
-  if filename then
-    if success then
-      cecho(string.format("<green>[Installer] Załadowano %s\n", filename))
-    else
-      cecho(string.format("<red>[Installer] Błąd pobierania %s\n", filename))
+
+  local filename = nil
+  local matchedKey = nil
+
+  for key, value in pairs(_pendingDownloads) do
+    if key == fname or value == fname or (fname and fname:find(value, 1, true)) then
+      filename = value
+      matchedKey = key
+      break
     end
-    _pendingDownloads[fname] = nil
-    -- If all downloads done, reload main script
-    local anyLeft = false
-    for _,v in pairs(_pendingDownloads) do anyLeft = true break end
-    if not anyLeft then
-      _updateInProgress = false
-      local mainPath = getTargetPath("core/main.lua")
-      cecho("<yellow>[Installer] Reloading scripts...\n")
-      local ok, err = pcall(dofile, mainPath)
-      if ok then
-        cecho("<green>[Installer] Scripts reloaded.\n")
+  end
+
+  if not filename then return end
+
+  if success then
+    cecho(string.format("<green>[Installer] Załadowano %s\n", filename))
+  else
+    cecho(string.format("<red>[Installer] Błąd pobierania %s\n", filename))
+  end
+
+  -- remove all possible keys
+  _pendingDownloads[fname] = nil
+  _pendingDownloads[filename] = nil
+  _pendingDownloads[getTargetPath(filename)] = nil
+
+  -- check if all downloads finished
+  local anyLeft = false
+  for _ in pairs(_pendingDownloads) do
+    anyLeft = true
+    break
+  end
+
+  if not anyLeft then
+    _updateInProgress = false
+
+    cecho("<yellow>[Installer] Reloading all scripts...\n")
+
+    for _, file in ipairs(FILES) do
+      local path = getTargetPath(file)
+      local f = io.open(path, "r")
+
+      if f then
+        f:close()
+
+        local ok, err = pcall(dofile, path)
+        if not ok then
+          cecho(string.format("<red>[Installer] Error loading %s: %s\n", file, tostring(err)))
+        end
       else
-        cecho(string.format("<red>[Installer] Reload error: %s\n", tostring(err)))
+        cecho(string.format("<red>[Installer] Missing file: %s\n", file))
       end
     end
+
+    cecho("<green>[Installer] Scripts reloaded.\n")
   end
 end)
 
+--------------------------------------------------
+-- UPDATE COMMAND
+--------------------------------------------------
 
 function updateScripts()
   if _updateInProgress then
     cecho("<yellow>Aktualizacja już trwa...\n")
     return
   end
+
   _updateInProgress = true
+
   for _, filename in ipairs(FILES) do
-    local url = string.format("https://raw.githubusercontent.com/%s/%s/main/%s", INSTALLER_REPO_USER, INSTALLER_REPO_NAME, filename)
+    local url = string.format(
+      "https://raw.githubusercontent.com/%s/%s/main/%s",
+      INSTALLER_REPO_USER,
+      INSTALLER_REPO_NAME,
+      filename
+    )
     downloadAndLoad(url, filename)
   end
 end
 
+--------------------------------------------------
+-- ALIAS
+--------------------------------------------------
+
 if not installer_update_alias then
-  installer_update_alias = tempAlias("^/zaktualizuj_skrypty$", function() updateScripts() end)
+  installer_update_alias = tempAlias("^/zaktualizuj_skrypty$", function()
+    updateScripts()
+  end)
 end
+
+--------------------------------------------------
+-- INIT
+--------------------------------------------------
 
 checkScriptsVersion()

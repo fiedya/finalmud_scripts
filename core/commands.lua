@@ -1,3 +1,4 @@
+cecho("<green>[Scripts] Loaded: core/commands.lua\n")
 function scripts_help()
   utils.log("Help", "<cyan>")
 end

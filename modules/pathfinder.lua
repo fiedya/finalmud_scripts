@@ -1,3 +1,4 @@
+cecho("<green>[Scripts] Loaded: modules/pathfinder.lua\n")
 
 modules.pathfinder = modules.pathfinder or {}
 
