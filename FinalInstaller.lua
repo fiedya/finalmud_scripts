@@ -1,3 +1,5 @@
+cecho("<green>[Installer] Loaded!\n")
+
 INSTALLER_VERSION = "1.0.2"
 INSTALLER_REPO_USER = "fiedya"
 INSTALLER_REPO_NAME = "finalmud_scripts"
@@ -34,7 +36,7 @@ end
 
 if _installer_http_handler then killAnonymousEventHandler(_installer_http_handler) end
 _installer_http_handler = registerAnonymousEventHandler("sysGetHttpDone", function(_, url, body)
-  if url:find("version.txt") then
+  if url and url:find("version.txt") then
     onVersionCheck(url, body)
   end
 end)

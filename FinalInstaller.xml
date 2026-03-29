@@ -5,130 +5,108 @@
 		<Script isActive="yes" isFolder="no">
 			<name>installer</name>
 			<packageName></packageName>
-      <script>INSTALLER_VERSION = "1.0.1"
-      INSTALLER_REPO_USER = "fiedya"
-      INSTALLER_REPO_NAME = "finalmud_scripts"
-      FILES = {
-        "core/main.lua",
-        "core/utils.lua",
-        "core/commands.lua",
-        "modules/pathfinder.lua",
-        "modules/herbs.lua",
-        "modules/combat.lua"
-      }
+			<script>cecho("&lt;green&gt;[Installer] Loaded!\n")
 
-      local _updateInProgress = false
-      local _pendingDownloads = {}
+INSTALLER_VERSION = "1.0.2"
+INSTALLER_REPO_USER = "fiedya"
+INSTALLER_REPO_NAME = "finalmud_scripts"
+FILES = {
+  "core/main.lua",
+  "core/utils.lua",
+  "core/commands.lua",
+  "modules/pathfinder.lua",
+  "modules/herbs.lua",
+  "modules/combat.lua"
+}
 
-      local function trim(s)
-        return (s:gsub("^%s*(.-)%s*$", "%1"))
-      end
+local _updateInProgress = false
+local _pendingDownloads = {}
 
-      function _installer_debug(msg)
-        cecho("<purple>[Installer Debug] " .. tostring(msg) .. "\n")
-      end
+local function trim(s)
+  return (s:gsub("^%s*(.-)%s*$", "%1"))
+end
 
-      local function _installer_safe(f, ...)
-        local ok, result = pcall(f, ...)
-        if not ok then
-          cecho("<red>[Installer ERROR] " .. tostring(result) .. "\n")
-          _installer_debug(debug.traceback())
-        end
-        return ok, result
-      end
 
-      function checkScriptsVersion()
-        local url = string.format("https://raw.githubusercontent.com/%s/%s/main/version.txt", INSTALLER_REPO_USER, INSTALLER_REPO_NAME)
-        _installer_debug("Checking scripts version: " .. url)
-        getHTTP(url)
-      end
+function checkScriptsVersion()
+  local url = string.format("https://raw.githubusercontent.com/%s/%s/main/version.txt", INSTALLER_REPO_USER, INSTALLER_REPO_NAME)
+  getHTTP(url)
+end
 
-      local function onVersionCheck(url, body)
-        _installer_debug("onVersionCheck url=" .. tostring(url) .. ", body=" .. tostring(body))
-        if not body or #body == 0 then return end
-        local remote = trim(body)
-        if remote ~= INSTALLER_VERSION then
-          cecho("&lt;red&gt;Masz nieaktualne skrypty! Wpisz &lt;yellow&gt;/zaktualizuj_skrypty\n")
-        end
-      end
 
-      if _installer_http_handler then _installer_debug("Killing old http handler") killAnonymousEventHandler(_installer_http_handler) end
-      _installer_http_handler = registerAnonymousEventHandler("sysGetHttpDone", function(_, url, body)
-        _installer_debug("sysGetHttpDone: url=" .. tostring(url))
-        if url:find("version.txt") then
-          _installer_safe(onVersionCheck, url, body)
-        end
-      end)
+local function onVersionCheck(url, body)
+  if not body or #body == 0 then return end
+  local remote = trim(body)
+  if remote ~= INSTALLER_VERSION then
+    cecho("&lt;red&gt;Masz nieaktualne skrypty! Wpisz &lt;yellow&gt;/zaktualizuj_skrypty\n")
+  end
+end
 
-      local function getTargetPath(filename)
-        -- Always use getMudletHomeDir() for the current profile
-        local path = getMudletHomeDir() .. "/" .. filename
-        _installer_debug("getTargetPath(" .. filename .. ") = " .. path)
-        return path
-      end
+if _installer_http_handler then killAnonymousEventHandler(_installer_http_handler) end
+_installer_http_handler = registerAnonymousEventHandler("sysGetHttpDone", function(_, url, body)
+  if url and url:find("version.txt") then
+    onVersionCheck(url, body)
+  end
+end)
 
-      local function downloadAndLoad(url, filename)
-        local path = getTargetPath(filename)
-        _pendingDownloads[path] = filename
-        cecho(string.format("&lt;cyan&gt;[Installer] Pobieranie %s...\n", filename))
-        _installer_debug("Downloading " .. url .. " to " .. path)
-        downloadFile(path, url)
-      end
 
-      if _installer_download_handler then _installer_debug("Killing old download handler") killAnonymousEventHandler(_installer_download_handler) end
-      _installer_download_handler = registerAnonymousEventHandler("sysDownloadDone", function(_, fname, success)
-        _installer_debug("sysDownloadDone: fname=" .. tostring(fname) .. ", success=" .. tostring(success))
-        local filename = _pendingDownloads[fname]
-        if filename then
-          if success then
-            cecho(string.format("&lt;green&gt;[Installer] Załadowano %s\n", filename))
-          else
-            cecho(string.format("&lt;red&gt;[Installer] Błąd pobierania %s\n", filename))
-          end
-          _pendingDownloads[fname] = nil
-          -- If all downloads done, reload main script
-          local anyLeft = false
-          for _,v in pairs(_pendingDownloads) do anyLeft = true break end
-          if not anyLeft then
-            _updateInProgress = false
-            local mainPath = getTargetPath("core/main.lua")
-            cecho("&lt;yellow&gt;[Installer] Reloading scripts...\n")
-            local ok, err = pcall(dofile, mainPath)
-            if ok then
-              cecho("&lt;green&gt;[Installer] Scripts reloaded.\n")
-            else
-              cecho(string.format("&lt;red&gt;[Installer] Reload error: %s\n", tostring(err)))
-              _installer_debug("Reload error: " .. tostring(err))
-            end
-          end
-        else
-          _installer_debug("sysDownloadDone: fname not in _pendingDownloads")
-        end
-      end)
+local function getTargetPath(filename)
+  -- Always use getMudletHomeDir() for the current profile
+  return getMudletHomeDir() .. "/" .. filename
+end
 
-      function updateScripts()
-        _installer_debug("updateScripts called, _updateInProgress=" .. tostring(_updateInProgress))
-        if _updateInProgress then
-          cecho("&lt;yellow&gt;Aktualizacja już trwa...\n")
-          return
-        end
-        _updateInProgress = true
-        for _, filename in ipairs(FILES) do
-          local url = string.format("https://raw.githubusercontent.com/%s/%s/main/%s", INSTALLER_REPO_USER, INSTALLER_REPO_NAME, filename)
-          downloadAndLoad(url, filename)
-        end
-      end
+local function downloadAndLoad(url, filename)
+  local path = getTargetPath(filename)
+  _pendingDownloads[path] = filename
+  cecho(string.format("&lt;cyan&gt;[Installer] Pobieranie %s...\n", filename))
+  downloadFile(path, url)
+end
 
-      if not installer_update_alias then
-        _installer_debug("Registering /zaktualizuj_skrypty alias")
-        installer_update_alias = tempAlias("^/zaktualizuj_skrypty$", function() _installer_safe(updateScripts) end)
+
+if _installer_download_handler then killAnonymousEventHandler(_installer_download_handler) end
+_installer_download_handler = registerAnonymousEventHandler("sysDownloadDone", function(_, fname, success)
+  local filename = _pendingDownloads[fname]
+  if filename then
+    if success then
+      cecho(string.format("&lt;green&gt;[Installer] Załadowano %s\n", filename))
+    else
+      cecho(string.format("&lt;red&gt;[Installer] Błąd pobierania %s\n", filename))
+    end
+    _pendingDownloads[fname] = nil
+    -- If all downloads done, reload main script
+    local anyLeft = false
+    for _,v in pairs(_pendingDownloads) do anyLeft = true break end
+    if not anyLeft then
+      _updateInProgress = false
+      local mainPath = getTargetPath("core/main.lua")
+      cecho("&lt;yellow&gt;[Installer] Reloading scripts...\n")
+      local ok, err = pcall(dofile, mainPath)
+      if ok then
+        cecho("&lt;green&gt;[Installer] Scripts reloaded.\n")
       else
-        _installer_debug("installer_update_alias already exists")
+        cecho(string.format("&lt;red&gt;[Installer] Reload error: %s\n", tostring(err)))
       end
+    end
+  end
+end)
 
-      _installer_debug("Installer loaded, calling checkScriptsVersion()")
-      _installer_safe(checkScriptsVersion)
-      </script>
+
+function updateScripts()
+  if _updateInProgress then
+    cecho("&lt;yellow&gt;Aktualizacja już trwa...\n")
+    return
+  end
+  _updateInProgress = true
+  for _, filename in ipairs(FILES) do
+    local url = string.format("https://raw.githubusercontent.com/%s/%s/main/%s", INSTALLER_REPO_USER, INSTALLER_REPO_NAME, filename)
+    downloadAndLoad(url, filename)
+  end
+end
+
+if not installer_update_alias then
+  installer_update_alias = tempAlias("^/zaktualizuj_skrypty$", function() updateScripts() end)
+end
+
+checkScriptsVersion()</script>
 			<eventHandlerList />
 		</Script>
 	</ScriptPackage>
