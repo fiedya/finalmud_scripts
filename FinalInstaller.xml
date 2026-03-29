@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE MudletPackage>
+<MudletPackage version="1.001">
+	<ScriptPackage>
+		<Script isActive="yes" isFolder="no">
+			<name>finalscripts_installer</name>
+			<packageName></packageName>
+			<script>-- Mudlet Lua Auto-Loader Installer
+FINALSCRIPTS_VERSION = "0.0.1"
+FINALSCRIPTS_REPO_USER = "fiedya"
+FINALSCRIPTS_REPO_NAME = "finalmud_scripts"
+FILES = {
+  "core.lua",
+  "ui.lua"
+}
+
+local _updateInProgress = false
+local _pendingDownloads = {}
+
+local function trim(s)
+  return (s:gsub("^%s*(.-)%s*$", "%1"))
+end
+
+function checkScriptsVersion()
+  local url = string.format("https://raw.githubusercontent.com/%s/%s/main/version.txt", FINALSCRIPTS_REPO_USER, FINALSCRIPTS_REPO_NAME)
+  getHTTP(url)
+end
+
+local function onVersionCheck(url, body)
+  if not body or #body == 0 then return end
+  local remote = trim(body)
+  if remote ~= FINALSCRIPTS_VERSION then
+    cecho("&lt;red&gt;Masz nieaktualne skrypty! Wpisz &lt;yellow&gt;/zaktualizuj_skrypty\n")
+  end
+end
+
+if _installer_http_handler then killAnonymousEventHandler(_installer_http_handler) end
+_installer_http_handler = registerAnonymousEventHandler("sysGetHttpDone", function(_, url, body)
+  if url:find("version.txt") then
+    onVersionCheck(url, body)
+  end
+end)
+
+local function downloadAndLoad(url, filename)
+  local path = getMudletHomeDir() .. "/" .. filename
+  _pendingDownloads[path] = filename
+  cecho(string.format("&lt;cyan&gt;[Installer] Pobieranie %s...\n", filename))
+  downloadFile(path, url)
+end
+
+if _installer_download_handler then killAnonymousEventHandler(_installer_download_handler) end
+_installer_download_handler = registerAnonymousEventHandler("sysDownloadDone", function(_, fname, success)
+  local filename = _pendingDownloads[fname]
+  if filename then
+    if success then
+      cecho(string.format("&lt;green&gt;[Installer] Załadowano %s\n", filename))
+      local ok, err = pcall(dofile, fname)
+      if not ok then
+        cecho(string.format("&lt;red&gt;[Installer] Błąd ładowania %s: %s\n", filename, tostring(err)))
+      end
+    else
+      cecho(string.format("&lt;red&gt;[Installer] Błąd pobierania %s\n", filename))
+    end
+    _pendingDownloads[fname] = nil
+    local anyLeft = false
+    for _,v in pairs(_pendingDownloads) do anyLeft = true break end
+    if not anyLeft then _updateInProgress = false end
+  end
+end)
+
+function updateScripts()
+  if _updateInProgress then
+    cecho("&lt;yellow&gt;Aktualizacja już trwa...\n")
+    return
+  end
+  _updateInProgress = true
+  for _, filename in ipairs(FILES) do
+    local url = string.format("https://raw.githubusercontent.com/%s/%s/main/%s", FINALSCRIPTS_REPO_USER, FINALSCRIPTS_REPO_NAME, filename)
+    downloadAndLoad(url, filename)
+  end
+end
+
+if not installer_update_alias then
+  installer_update_alias = tempAlias("^/zaktualizuj_skrypty$", function() updateScripts() end)
+end
+
+checkScriptsVersion()</script>
+			<eventHandlerList />
+		</Script>
+	</ScriptPackage>
+</MudletPackage>
