@@ -1,6 +1,6 @@
 -- MyScripts Mudlet Auto-Updater
 -- Version system
-FINALSCRIPTS_VERSION = "1.0.0"
+FINALSCRIPTS_VERSION = "1.0.1"
 FINALSCRIPTS_REPO_USER = "fiedya" -- replace with your GitHub username
 FINALSCRIPTS_REPO_NAME = "finalmud_scripts" -- replace with your GitHub repo name
 FINALSCRIPTS_XML_NAME = "FinalInstaller.xml"
