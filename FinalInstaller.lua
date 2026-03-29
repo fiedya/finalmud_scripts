@@ -1,25 +1,25 @@
--- Final scripts Auto-Updater
--- Version system
-FINALSCRIPTS_VERSION = "1.0.5"
-FINALSCRIPTS_REPO_USER = "fiedya" -- replace with your GitHub username
-FINALSCRIPTS_REPO_NAME = "finalmud_scripts" -- replace with your GitHub repo name
-FINALSCRIPTS_XML_NAME = "FinalInstaller.xml"
+-- Mudlet Lua Auto-Loader Installer
+FINALSCRIPTS_VERSION = "0.0.1"
+FINALSCRIPTS_REPO_USER = "fiedya"
+FINALSCRIPTS_REPO_NAME = "finalmud_scripts"
+FILES = {
+  "core.lua",
+  "ui.lua"
+}
 
-local _updateHandler = nil
 local _updateInProgress = false
+local _pendingDownloads = {}
 
-cecho("<green>[Installer] Script started\n")
-
-function trim(s)
+local function trim(s)
   return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
 function checkScriptsVersion()
   local url = string.format("https://raw.githubusercontent.com/%s/%s/main/version.txt", FINALSCRIPTS_REPO_USER, FINALSCRIPTS_REPO_NAME)
-  getHTTP(url, "finalscripts_version_check")
+  getHTTP(url)
 end
 
-function onScriptsVersionCheck(_, url, body)
+local function onVersionCheck(url, body)
   if not body or #body == 0 then return end
   local remote = trim(body)
   if remote ~= FINALSCRIPTS_VERSION then
@@ -27,9 +27,37 @@ function onScriptsVersionCheck(_, url, body)
   end
 end
 
-registerAnonymousEventHandler("sysGetHttpDone", function(event, url, body)
-  if event == "finalscripts_version_check" then
-    onScriptsVersionCheck(event, url, body)
+if _installer_http_handler then killAnonymousEventHandler(_installer_http_handler) end
+_installer_http_handler = registerAnonymousEventHandler("sysGetHttpDone", function(_, url, body)
+  if url:find("version.txt") then
+    onVersionCheck(url, body)
+  end
+end)
+
+local function downloadAndLoad(url, filename)
+  local path = getMudletHomeDir() .. "/" .. filename
+  _pendingDownloads[path] = filename
+  cecho(string.format("<cyan>[Installer] Pobieranie %s...\n", filename))
+  downloadFile(path, url)
+end
+
+if _installer_download_handler then killAnonymousEventHandler(_installer_download_handler) end
+_installer_download_handler = registerAnonymousEventHandler("sysDownloadDone", function(_, fname, success)
+  local filename = _pendingDownloads[fname]
+  if filename then
+    if success then
+      cecho(string.format("<green>[Installer] Załadowano %s\n", filename))
+      local ok, err = pcall(dofile, fname)
+      if not ok then
+        cecho(string.format("<red>[Installer] Błąd ładowania %s: %s\n", filename, tostring(err)))
+      end
+    else
+      cecho(string.format("<red>[Installer] Błąd pobierania %s\n", filename))
+    end
+    _pendingDownloads[fname] = nil
+    local anyLeft = false
+    for _,v in pairs(_pendingDownloads) do anyLeft = true break end
+    if not anyLeft then _updateInProgress = false end
   end
 end)
 
@@ -39,31 +67,14 @@ function updateScripts()
     return
   end
   _updateInProgress = true
-  local url = string.format("https://github.com/%s/%s/releases/latest/download/%s", FINALSCRIPTS_REPO_USER, FINALSCRIPTS_REPO_NAME, FINALSCRIPTS_XML_NAME)
-  local path = getMudletHomeDir() .. "/" .. FINALSCRIPTS_XML_NAME
-
-  if _updateHandler then killAnonymousEventHandler(_updateHandler) end
-  _updateHandler = registerAnonymousEventHandler("sysDownloadDone", function(_, fname, success)
-    if fname == path then
-      if success then
-        installPackage(path)
-        cecho("<green>Skrypty zaktualizowane! Zrestartuj Mudleta.\n")
-      else
-        cecho("<red>Błąd pobierania aktualizacji skryptów!\n")
-      end
-      _updateInProgress = false
-      killAnonymousEventHandler(_updateHandler)
-      _updateHandler = nil
-    end
-  end)
-  downloadFile(path, url)
-  cecho("<cyan>Pobieranie najnowszych skryptów...\n")
+  for _, filename in ipairs(FILES) do
+    local url = string.format("https://raw.githubusercontent.com/%s/%s/main/%s", INSTALLER_REPO_USER, INSTALLER_REPO_NAME, filename)
+    downloadAndLoad(url, filename)
+  end
 end
 
--- Register update alias
-if not scripts_update_alias then
-  scripts_update_alias = tempAlias("^/zaktualizuj_skrypty$", function() updateScripts() end)
+if not installer_update_alias then
+  installer_update_alias = tempAlias("^/zaktualizuj_skrypty$", function() updateScripts() end)
 end
 
--- Run version check on load
 checkScriptsVersion()

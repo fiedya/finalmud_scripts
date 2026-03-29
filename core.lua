@@ -1,0 +1,1 @@
+cecho("<green>[Core] Core loaded!\n")
