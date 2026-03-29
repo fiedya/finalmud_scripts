@@ -1,6 +1,6 @@
--- MyScripts Mudlet Auto-Updater
+-- Final scripts Auto-Updater
 -- Version system
-FINALSCRIPTS_VERSION = "1.0.2
+FINALSCRIPTS_VERSION = "1.0.4"
 FINALSCRIPTS_REPO_USER = "fiedya" -- replace with your GitHub username
 FINALSCRIPTS_REPO_NAME = "finalmud_scripts" -- replace with your GitHub repo name
 FINALSCRIPTS_XML_NAME = "FinalInstaller.xml"
@@ -37,7 +37,7 @@ function updateScripts()
     return
   end
   _updateInProgress = true
-  local url = string.format("https://github.com/%s/%s/releases/latest/download/%s", FINALSCRIPTS_REPO_USER, MY_SCRIPTS_REPO_NAME, FINALSCRIPTS_XML_NAME)
+  local url = string.format("https://github.com/%s/%s/releases/latest/download/%s", FINALSCRIPTS_REPO_USER, FINALSCRIPTS_REPO_NAME, FINALSCRIPTS_XML_NAME)
   local path = getMudletHomeDir() .. "/" .. FINALSCRIPTS_XML_NAME
 
   if _updateHandler then killAnonymousEventHandler(_updateHandler) end
