@@ -29,7 +29,7 @@ end
 local function onVersionCheck(url, body)
   if not body or #body == 0 then return end
   local remote = trim(body)
-  if remote ~= INSTALLER_VERSION then
+  if remote ~= SCRIPTS_VERSION then
     cecho("<red>Masz nieaktualne skrypty! Wpisz <yellow>/zaktualizuj_skrypty\n")
   end
 end
@@ -50,6 +50,7 @@ end
 local function downloadAndLoad(url, filename)
   local path = getTargetPath(filename)
   _pendingDownloads[path] = filename
+  _pendingDownloads[filename] = filename
   cecho(string.format("<cyan>[Installer] Pobieranie %s...\n", filename))
   downloadFile(path, url)
 end
@@ -57,7 +58,7 @@ end
 
 if _installer_download_handler then killAnonymousEventHandler(_installer_download_handler) end
 _installer_download_handler = registerAnonymousEventHandler("sysDownloadDone", function(_, fname, success)
-  local filename = _pendingDownloads[fname]
+  local filename = _pendingDownloads[fname] or _pendingDownloads[getMudletHomeDir() .. "/" .. fname]
   if filename then
     if success then
       cecho(string.format("<green>[Installer] Załadowano %s\n", filename))
