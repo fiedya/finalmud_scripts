@@ -1,4 +1,8 @@
-cecho("<green>[Scripts] Loaded: core/utils.lua\n")
+_SCRIPTS_LOADED = _SCRIPTS_LOADED or {}
+if not _SCRIPTS_LOADED["core/utils.lua"] then
+  cecho("<green>[Scripts] Loaded: core/utils.lua\n")
+  _SCRIPTS_LOADED["core/utils.lua"] = true
+end
 utils = {}
 
 function utils.log(msg, color)
